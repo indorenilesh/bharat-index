@@ -50,13 +50,13 @@ The index calculator must also be configured with all the stock IDs it should in
 
 | Service | Description |
 | --- | --- |
-| `postgres` | PostgreSQL database. On first initialization, it creates the environment-prefixed database (by default `dev-bharat-index`) and loads the schema and initial index and share records from `db/schema.sql`. |
+| `postgres` | PostgreSQL database. On first initialization, it creates `<APP_ENV>-bharat-index` and loads the schema and initial index and share records from `db/schema.sql`. |
 | `redis` | Redis cache for the latest price tick for each share and the latest calculated index value. |
 | `bata` | Stock-service container configured for BATA (`BT001`). Generates a random price each second using the current range in `s_detail`, then writes the tick to PostgreSQL and Redis. |
 | `tata` | Stock-service container configured for TATA (`TT001`). Generates a random price each second using the current range in `s_detail`, then writes the tick to PostgreSQL and Redis. |
 | `calc-index` | Reads the latest share prices from Redis, averages them once per second, and stores each index tick in PostgreSQL and Redis. |
-| `ui` | Live Bharat Index dashboard. Displays the current value, movement, recent high and low, and a chart of the last 120 ticks. |
-| `admin` | Login-free console for viewing and updating share price ranges in `s_detail`. The share services reload their range every second and apply changes on their next tick. |
+| `ui` | Live Bharat Index dashboard. Displays the current value, movement, recent high and low, a chart of the last 120 ticks, and a live clock with a selectable time zone. |
+| `admin` | Login-free console for viewing and updating share price ranges in `s_detail`. Includes a live clock with a selectable time zone. The share services reload their range every second and apply changes on their next tick. |
 
 ## Run the project
 
@@ -67,20 +67,27 @@ The index calculator must also be configured with all the stock IDs it should in
 
 ### Start
 
-From the repository root, set a PostgreSQL password and start all services:
+From the repository root, set `APP_ENV` and the PostgreSQL password in the current PowerShell session, then start all services. `APP_ENV` is required; Compose will stop with an error if it is missing. Choose the value for the environment you want to run:
 
 ```powershell
+$env:APP_ENV = 'dev'
+$env:POSTGRES_PASSWORD = 'choose-a-strong-local-password'
+docker compose up -d --build
+```
+
+Use `dev`, `qa`, or `prod` as appropriate. The `APP_ENV` value is passed to each application microservice and PostgreSQL. The database name will be `dev-bharat-index`, `qa-bharat-index`, or `prod-bharat-index`. Keep the terminal open while running the project; the variables are set only in that PowerShell session.
+
+The Compose project name and its named volumes are also environment-specific, so switching `APP_ENV` selects that environment's own local database volume. Switching the environment does not copy data between environments.
+
+Set the variable again in any new terminal before invoking Compose. For example, to run QA:
+
+```powershell
+$env:APP_ENV = 'qa'
 $env:POSTGRES_PASSWORD = 'choose-a-strong-local-password'
 docker compose up --build
 ```
 
-Keep this terminal open while running the project. To keep the password between terminal sessions, create a `.env` file next to `compose.yaml`:
-
-```dotenv
-POSTGRES_PASSWORD=choose-a-strong-local-password
-```
-
-Do not commit `.env` or use a development password in production.
+Use an appropriate managed secret for production; do not commit credentials or use a development password in production.
 
 When the services are ready, open:
 
@@ -88,6 +95,8 @@ When the services are ready, open:
 - **Share range admin:** [http://localhost:8081](http://localhost:8081)
 
 The admin console does not have authentication. Its port is bound to localhost for local development; do not expose it to an untrusted network.
+
+Both consoles display a live date and time. Use the time-zone selector to choose the device's local time or an available IANA time zone (for example, `Asia/Kolkata` or `UTC`). Each console remembers the selected zone in that browser.
 
 ### Stop
 
@@ -111,13 +120,13 @@ The schema initialization SQL runs only when PostgreSQL initializes an empty dat
 | --- | --- | --- |
 | `POSTGRES_PASSWORD` | Required | Password for the PostgreSQL user. |
 | `POSTGRES_USER` | `bharatindex` | PostgreSQL user shared by the database and application services. |
-| `DB_ENV_PREFIX` | `dev` | Prefix for the database name. For example, `staging` uses `staging-bharat-index`. |
+| `APP_ENV` | Required | Application environment passed to each service; also determines the database name and Compose project. Set it to `dev`, `qa`, or `prod` before running Compose. |
 | `STOCK_IDS` | `BT001,TT001` | Comma-separated stock IDs used in the index calculation. |
 
-In PowerShell, set optional environment values before starting Compose, for example:
+In PowerShell, set the required environment values before starting Compose. `APP_ENV` controls the database name:
 
 ```powershell
-$env:DB_ENV_PREFIX = 'staging'
+$env:APP_ENV = 'prod'
 $env:POSTGRES_PASSWORD = 'choose-a-strong-local-password'
 docker compose up --build
 ```

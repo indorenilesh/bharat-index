@@ -36,6 +36,14 @@
     .brand-mark { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; color: #07111f; background: var(--blue); font-size: 17px; font-weight: 800; }
     .brand small { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; }
     .console-label { padding: 7px 10px; border: 1px solid var(--border); border-radius: 999px; color: #b6c3d1; font-size: 11px; }
+    .header-tools { display: flex; align-items: center; gap: 14px; }
+    .clock-controls { display: flex; align-items: center; gap: 9px; }
+    #live-clock { color: #dce6ef; font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .timezone-select {
+      min-height: 34px; max-width: 215px; padding: 0 9px; border: 1px solid var(--border); border-radius: 7px;
+      background: #0d1929; color: #b6c3d1; font: inherit; font-size: 11px;
+    }
+    .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     main { padding: 46px 0; }
     .eyebrow { margin: 0 0 11px; color: var(--muted); font-size: 11px; font-weight: 650; letter-spacing: .14em; text-transform: uppercase; }
     h1 { margin: 0; font-size: clamp(28px, 4vw, 38px); font-weight: 620; letter-spacing: -.045em; }
@@ -71,7 +79,11 @@
     .loading, .empty { padding: 28px; border: 1px solid var(--border); border-radius: 12px; color: var(--muted); background: var(--panel); font-size: 13px; text-align: center; }
     @media (max-width: 600px) {
       .shell { width: min(100% - 28px, 960px); }
-      header { height: 66px; }
+      header { height: auto; min-height: 66px; padding: 10px 0; }
+      .header-tools { align-items: flex-end; flex-direction: column; gap: 5px; }
+      .clock-controls { gap: 5px; }
+      #live-clock { font-size: 10px; }
+      .timezone-select { max-width: 145px; min-height: 29px; font-size: 10px; }
       main { padding: 34px 0; }
       .range-form { grid-template-columns: 1fr 1fr; gap: 12px; }
       .save { grid-column: 1 / -1; width: 100%; }
@@ -86,7 +98,14 @@
         <div class="brand-mark">B</div>
         <div>Bharat Markets<small>Market configuration</small></div>
       </div>
-      <div class="console-label">Admin console</div>
+      <div class="header-tools">
+        <div class="clock-controls">
+          <time id="live-clock" aria-label="Current time">--</time>
+          <label class="visually-hidden" for="timezone">Time zone</label>
+          <select id="timezone" class="timezone-select" aria-label="Choose time zone"></select>
+        </div>
+        <div class="console-label">Admin console</div>
+      </div>
     </div>
   </header>
   <main class="shell">
@@ -104,6 +123,32 @@
     <aside class="notice">This console has no login and is intended for local development use only. Its port is bound to localhost; do not expose it to an untrusted network.</aside>
   </main>
   <script>
+    const timezoneSelect = document.querySelector("#timezone");
+    const timezoneStorageKey = "bharat-index-timezone";
+    const fallbackTimeZones = ["UTC", "Asia/Kolkata", "America/New_York", "America/Los_Angeles", "Europe/London", "Europe/Paris", "Asia/Dubai", "Asia/Singapore", "Asia/Tokyo", "Australia/Sydney"];
+    const timeZones = [...new Set([...(typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : fallbackTimeZones), "Asia/Kolkata"])];
+    const savedTimeZone = localStorage.getItem(timezoneStorageKey);
+    const validSavedTimeZone = savedTimeZone === "local" || timeZones.includes(savedTimeZone);
+
+    timezoneSelect.add(new Option("Local time", "local"));
+    if (!timeZones.includes("UTC")) timezoneSelect.add(new Option("UTC", "UTC"));
+    timeZones.forEach(timeZone => timezoneSelect.add(new Option(timeZone, timeZone)));
+    timezoneSelect.value = validSavedTimeZone ? savedTimeZone : "local";
+
+    function updateClock() {
+      const timeZone = timezoneSelect.value === "local" ? undefined : timezoneSelect.value;
+      document.querySelector("#live-clock").textContent = new Intl.DateTimeFormat("en-IN", {
+        year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false, timeZone
+      }).format(new Date());
+    }
+
+    timezoneSelect.addEventListener("change", () => {
+      localStorage.setItem(timezoneStorageKey, timezoneSelect.value);
+      updateClock();
+    });
+    updateClock();
+    window.setInterval(updateClock, 1000);
+
     const stocksElement = document.querySelector("#stocks");
 
     function setStatus(element, message, type = "") {
