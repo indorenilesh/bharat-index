@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07111f">
+  <title>Bharat Index — Live Market</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+      --background: #07111f;
+      --panel: #0d1929;
+      --border: #1c2b3d;
+      --muted: #8595a9;
+      --text: #edf3fa;
+      --green: #35d49a;
+      --red: #ff647c;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at 50% -24%, rgba(24, 69, 101, .28), transparent 56%),
+        var(--background);
+      color: var(--text);
+    }
+
+    .shell { width: min(1180px, calc(100% - 40px)); margin: 0 auto; }
+    header {
+      height: 76px;
+      border-bottom: 1px solid rgba(129, 155, 181, .12);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; font-weight: 650; letter-spacing: -.02em; }
+    .brand-mark {
+      width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px;
+      color: #07111f; background: var(--green); font-size: 17px; font-weight: 800;
+    }
+    .brand small { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; }
+    .market-state { display: flex; align-items: center; gap: 9px; color: #b6c3d1; font-size: 12px; }
+    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 12px rgba(53, 212, 154, .75); }
+
+    main { padding: 42px 0 32px; }
+    .eyebrow { margin: 0 0 11px; color: var(--muted); font-size: 11px; font-weight: 650; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(27px, 4vw, 38px); font-weight: 620; letter-spacing: -.045em; }
+    .subtitle { margin: 9px 0 27px; color: var(--muted); font-size: 14px; }
+    .summary {
+      display: flex; flex-wrap: wrap; align-items: end; gap: 28px;
+      padding: 23px 25px; border: 1px solid var(--border); border-radius: 14px 14px 0 0;
+      background: linear-gradient(120deg, rgba(17, 35, 52, .96), rgba(11, 25, 40, .96));
+    }
+    .price-label { margin-bottom: 8px; color: var(--muted); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+    .price-line { display: flex; align-items: baseline; gap: 13px; }
+    #current-price { font-size: clamp(36px, 6vw, 54px); font-variant-numeric: tabular-nums; font-weight: 620; letter-spacing: -.055em; }
+    #price-change { font-size: 14px; font-variant-numeric: tabular-nums; font-weight: 620; }
+    .positive { color: var(--green); }
+    .negative { color: var(--red); }
+    .neutral { color: var(--muted); }
+    .summary-meta { display: flex; gap: 30px; margin-left: auto; padding-bottom: 5px; }
+    .meta-item span { display: block; }
+    .meta-label { margin-bottom: 7px; color: var(--muted); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+    .meta-value { color: #dce6ef; font-size: 13px; font-variant-numeric: tabular-nums; }
+    .chart-card {
+      padding: 21px 20px 12px; border: 1px solid var(--border); border-top: 0;
+      border-radius: 0 0 14px 14px; background: rgba(11, 24, 39, .92);
+    }
+    .chart-heading { display: flex; align-items: center; justify-content: space-between; margin: 0 3px 15px; }
+    .chart-heading h2 { margin: 0; color: #dce6ef; font-size: 13px; font-weight: 570; }
+    .range { color: var(--muted); font-size: 11px; }
+    .chart-wrap { position: relative; width: 100%; height: clamp(260px, 42vw, 390px); }
+    #chart { display: block; width: 100%; height: 100%; overflow: visible; }
+    .grid-line { stroke: #1c2b3b; stroke-width: 1; }
+    .axis-label { fill: #718297; font-size: 10px; font-family: inherit; }
+    .chart-line { fill: none; stroke: var(--green); stroke-linecap: round; stroke-linejoin: round; stroke-width: 2.5; }
+    .chart-area { fill: url(#area-fill); }
+    .chart-dot { fill: var(--green); stroke: #0b1827; stroke-width: 3; }
+    .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 13px; }
+    .empty[hidden] { display: none; }
+    footer { display: flex; justify-content: space-between; gap: 14px; padding: 16px 3px 0; color: #64758a; font-size: 11px; }
+    #connection-state.error { color: var(--red); }
+
+    @media (max-width: 650px) {
+      .shell { width: min(100% - 28px, 1180px); }
+      header { height: 66px; }
+      main { padding-top: 31px; }
+      .summary { gap: 21px; padding: 19px; }
+      .summary-meta { width: 100%; margin-left: 0; justify-content: space-between; gap: 12px; }
+      .chart-card { padding: 17px 10px 10px; }
+      .chart-wrap { height: 280px; }
+      footer { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="shell" style="display:flex;align-items:center;justify-content:space-between">
+      <div class="brand">
+        <div class="brand-mark">B</div>
+        <div>Bharat Markets<small>Live index monitor</small></div>
+      </div>
+      <div class="market-state"><span class="live-dot"></span><span id="connection-state">Connecting</span></div>
+    </div>
+  </header>
+  <main class="shell">
+    <p class="eyebrow">Market overview <span id="index-id"></span></p>
+    <h1 id="index-name">Bharat Index</h1>
+    <p class="subtitle">Live index performance, updated every second</p>
+
+    <section class="summary" aria-label="Current index value">
+      <div>
+        <div class="price-label">Index value</div>
+        <div class="price-line">
+          <strong id="current-price">--</strong>
+          <span id="price-change" class="neutral">Waiting for first tick</span>
+        </div>
+      </div>
+      <div class="summary-meta">
+        <div class="meta-item"><span class="meta-label">Session high</span><span class="meta-value" id="session-high">--</span></div>
+        <div class="meta-item"><span class="meta-label">Session low</span><span class="meta-value" id="session-low">--</span></div>
+        <div class="meta-item"><span class="meta-label">Last update</span><span class="meta-value" id="last-update">--</span></div>
+      </div>
+    </section>
+
+    <section class="chart-card" aria-label="Live index chart">
+      <div class="chart-heading"><h2>Index value</h2><span class="range">Last 120 ticks · 1 second</span></div>
+      <div class="chart-wrap">
+        <svg id="chart" viewBox="0 0 1000 340" role="img" aria-label="Bharat Index value over time">
+          <defs>
+            <linearGradient id="area-fill" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="#35d49a" stop-opacity=".22"></stop>
+              <stop offset="100%" stop-color="#35d49a" stop-opacity="0"></stop>
+            </linearGradient>
+          </defs>
+          <g id="grid"></g>
+          <path id="area" class="chart-area"></path>
+          <path id="line" class="chart-line"></path>
+          <circle id="latest-dot" class="chart-dot" r="5" visibility="hidden"></circle>
+        </svg>
+        <div id="empty-state" class="empty">Waiting for index price ticks…</div>
+      </div>
+      <footer>
+        <span>Showing the most recent 120 recorded index ticks</span>
+        <span>Prices are averaged from the latest BATA and TATA ticks</span>
+      </footer>
+    </section>
+  </main>
+  <script>
+    const chartWidth = 1000;
+    const chartHeight = 340;
+    const padding = { top: 16, right: 18, bottom: 32, left: 72 };
+    const chart = document.querySelector("#chart");
+    const grid = document.querySelector("#grid");
+    const line = document.querySelector("#line");
+    const area = document.querySelector("#area");
+    const latestDot = document.querySelector("#latest-dot");
+    const emptyState = document.querySelector("#empty-state");
+    const currentPrice = document.querySelector("#current-price");
+    const priceChange = document.querySelector("#price-change");
+    const numberFormat = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const clockFormat = new Intl.DateTimeFormat("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+    function renderGrid(min, max, plotWidth, plotHeight) {
+      const divisions = 4;
+      const lines = [];
+      for (let i = 0; i <= divisions; i++) {
+        const y = padding.top + plotHeight * i / divisions;
+        const value = max - (max - min) * i / divisions;
+        lines.push(`<line class="grid-line" x1="${padding.left}" y1="${y}" x2="${padding.left + plotWidth}" y2="${y}"></line>`);
+        lines.push(`<text class="axis-label" x="${padding.left - 10}" y="${y + 4}" text-anchor="end">${numberFormat.format(value)}</text>`);
+      }
+      grid.innerHTML = lines.join("");
+    }
+
+    function draw(prices) {
+      if (!prices.length) {
+        line.setAttribute("d", "");
+        area.setAttribute("d", "");
+        latestDot.setAttribute("visibility", "hidden");
+        grid.innerHTML = "";
+        emptyState.hidden = false;
+        currentPrice.textContent = "--";
+        priceChange.textContent = "Waiting for first tick";
+        priceChange.className = "neutral";
+        document.querySelector("#session-high").textContent = "--";
+        document.querySelector("#session-low").textContent = "--";
+        document.querySelector("#last-update").textContent = "--";
+        return;
+      }
+
+      emptyState.hidden = true;
+      const values = prices.map(point => point.price);
+      const dataMin = Math.min(...values);
+      const dataMax = Math.max(...values);
+      const spread = dataMax - dataMin;
+      const paddingValue = spread === 0 ? Math.max(dataMax * 0.005, 0.5) : spread * 0.18;
+      const min = dataMin - paddingValue;
+      const max = dataMax + paddingValue;
+      const plotWidth = chartWidth - padding.left - padding.right;
+      const plotHeight = chartHeight - padding.top - padding.bottom;
+      const coords = values.map((value, index) => ({
+        x: padding.left + plotWidth * (values.length === 1 ? 0.5 : index / (values.length - 1)),
+        y: padding.top + plotHeight * (max - value) / (max - min)
+      }));
+      const path = coords.map((point, index) => `${index ? "L" : "M"}${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(" ");
+      const baseline = padding.top + plotHeight;
+      line.setAttribute("d", path);
+      area.setAttribute("d", `${path} L${coords[coords.length - 1].x},${baseline} L${coords[0].x},${baseline} Z`);
+      latestDot.setAttribute("cx", coords[coords.length - 1].x);
+      latestDot.setAttribute("cy", coords[coords.length - 1].y);
+      latestDot.setAttribute("visibility", "visible");
+      renderGrid(min, max, plotWidth, plotHeight);
+
+      const latest = values[values.length - 1];
+      currentPrice.textContent = numberFormat.format(latest);
+      document.querySelector("#session-high").textContent = numberFormat.format(dataMax);
+      document.querySelector("#session-low").textContent = numberFormat.format(dataMin);
+      document.querySelector("#last-update").textContent = clockFormat.format(new Date(prices[prices.length - 1].timestamp));
+      if (values.length > 1) {
+        const previousTickPrice = values[values.length - 2];
+        const delta = latest - previousTickPrice;
+        const sign = delta > 0 ? "+" : "";
+        priceChange.textContent = `${sign}${numberFormat.format(delta)} (${sign}${(delta / previousTickPrice * 100).toFixed(2)}%)`;
+        priceChange.className = delta > 0 ? "positive" : delta < 0 ? "negative" : "neutral";
+      } else {
+        priceChange.textContent = "First market tick";
+        priceChange.className = "neutral";
+      }
+    }
+
+    async function refresh() {
+      try {
+        const response = await fetch("/api/index", { cache: "no-store" });
+        if (!response.ok) throw new Error(`Index API returned ${response.status}`);
+        const snapshot = await response.json();
+        document.querySelector("#index-name").textContent = snapshot.name;
+        document.querySelector("#index-id").textContent = snapshot.id ? `· ${snapshot.id}` : "";
+        draw(snapshot.prices);
+        document.querySelector("#connection-state").textContent = "Live market data";
+        document.querySelector("#connection-state").classList.remove("error");
+      } catch (error) {
+        console.error("Unable to refresh index chart:", error);
+        document.querySelector("#connection-state").textContent = "Connection lost · retrying";
+        document.querySelector("#connection-state").classList.add("error");
+      }
+    }
+
+    refresh();
+    window.setInterval(refresh, 1000);
+  </script>
+</body>
+</html>
