@@ -1,24 +1,24 @@
-x-market-service: &market-service
-  image: bharat-index-services:local
-  build:
-    context: .
-    dockerfile: services/Dockerfile
-  restart: unless-stopped
-  environment:
-    PGHOST: postgres
-    PGPORT: "5432"
-    PGUSER: ${POSTGRES_USER:-bharatindex}
-    PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before starting the services}
-    PGDATABASE: ${DB_ENV_PREFIX:-dev}-bharat-index
-    REDIS_ADDR: redis:6379
-  depends_on:
-    postgres:
-      condition: service_healthy
-    redis:
-      condition: service_healthy
+x-postgres-environment: &postgres-environment
+  PGHOST: postgres
+  PGPORT: "5432"
+  PGUSER: ${POSTGRES_USER:-bharatindex}
+  PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before starting the services}
+  PGDATABASE: ${DB_ENV_PREFIX:-dev}-bharat-index
+  PGSSLMODE: disable
+
+x-postgres-dependency: &postgres-dependency
+  postgres:
+    condition: service_healthy
+
+x-redis-dependencies: &redis-dependencies
+  postgres:
+    condition: service_healthy
+  redis:
+    condition: service_healthy
 
 services:
   postgres:
+    image: bharat-index-postgres:local
     build:
       context: ./db
       dockerfile: Dockerfile
@@ -40,8 +40,8 @@ services:
 
   redis:
     image: redis:7-alpine
-    restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
+    restart: unless-stopped
     volumes:
       - redis_data:/data
     healthcheck:
@@ -51,66 +51,63 @@ services:
       retries: 20
 
   bata:
-    <<: *market-service
-    command: ["stock"]
+    image: bharat-index-stock:local
+    build:
+      context: ./services/stock
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on: *redis-dependencies
     environment:
-      PGHOST: postgres
-      PGPORT: "5432"
-      PGUSER: ${POSTGRES_USER:-bharatindex}
-      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before starting the services}
-      PGDATABASE: ${DB_ENV_PREFIX:-dev}-bharat-index
+      <<: *postgres-environment
       REDIS_ADDR: redis:6379
       STOCK_ID: BT001
 
   tata:
-    <<: *market-service
-    command: ["stock"]
+    image: bharat-index-stock:local
+    build:
+      context: ./services/stock
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on: *redis-dependencies
     environment:
-      PGHOST: postgres
-      PGPORT: "5432"
-      PGUSER: ${POSTGRES_USER:-bharatindex}
-      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before starting the services}
-      PGDATABASE: ${DB_ENV_PREFIX:-dev}-bharat-index
+      <<: *postgres-environment
       REDIS_ADDR: redis:6379
       STOCK_ID: TT001
 
   calc-index:
-    <<: *market-service
-    command: ["calc-index"]
+    image: bharat-index-calc-index:local
+    build:
+      context: ./services/calc-index
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on: *redis-dependencies
     environment:
-      PGHOST: postgres
-      PGPORT: "5432"
-      PGUSER: ${POSTGRES_USER:-bharatindex}
-      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before starting the services}
-      PGDATABASE: ${DB_ENV_PREFIX:-dev}-bharat-index
+      <<: *postgres-environment
       REDIS_ADDR: redis:6379
       STOCK_IDS: ${STOCK_IDS:-BT001,TT001}
 
   ui:
-    <<: *market-service
-    command: ["ui"]
+    image: bharat-index-ui:local
+    build:
+      context: ./services/ui
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on: *postgres-dependency
     environment:
-      PGHOST: postgres
-      PGPORT: "5432"
-      PGUSER: ${POSTGRES_USER:-bharatindex}
-      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before starting the services}
-      PGDATABASE: ${DB_ENV_PREFIX:-dev}-bharat-index
+      <<: *postgres-environment
       UI_PORT: "8080"
     ports:
       - "127.0.0.1:8080:8080"
 
   admin:
-    <<: *market-service
-    command: ["admin"]
-    depends_on:
-      postgres:
-        condition: service_healthy
+    image: bharat-index-admin:local
+    build:
+      context: ./services/admin
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on: *postgres-dependency
     environment:
-      PGHOST: postgres
-      PGPORT: "5432"
-      PGUSER: ${POSTGRES_USER:-bharatindex}
-      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before starting the services}
-      PGDATABASE: ${DB_ENV_PREFIX:-dev}-bharat-index
+      <<: *postgres-environment
       ADMIN_PORT: "8081"
     ports:
       - "127.0.0.1:8081:8081"
