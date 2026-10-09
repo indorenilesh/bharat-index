@@ -126,7 +126,14 @@ func readIndexSnapshot(ctx context.Context, db *sql.DB) (indexSnapshot, error) {
 }
 
 func openPostgres() (*sql.DB, error) {
-	dbName := envOrDefault("PGDATABASE", envOrDefault("DB_ENV_PREFIX", "dev")+"-bharat-index")
+	dbName := os.Getenv("PGDATABASE")
+	if dbName == "" {
+		appEnv := os.Getenv("APP_ENV")
+		if appEnv == "" {
+			return nil, fmt.Errorf("PGDATABASE or APP_ENV must be configured")
+		}
+		dbName = appEnv + "-bharat-index"
+	}
 	address := net.JoinHostPort(envOrDefault("PGHOST", "postgres"), envOrDefault("PGPORT", "5432"))
 	connectionURL := url.URL{
 		Scheme: "postgres",

@@ -1,9 +1,12 @@
+name: bharat-index-${APP_ENV:?Set APP_ENV to dev, qa, or prod before starting Compose}
+
 x-postgres-environment: &postgres-environment
+  APP_ENV: ${APP_ENV:?Set APP_ENV to dev, qa, or prod before starting Compose}
   PGHOST: postgres
   PGPORT: "5432"
   PGUSER: ${POSTGRES_USER:-bharatindex}
   PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before starting the services}
-  PGDATABASE: ${DB_ENV_PREFIX:-dev}-bharat-index
+  PGDATABASE: ${APP_ENV:?Set APP_ENV to dev, qa, or prod before starting Compose}-bharat-index
   PGSSLMODE: disable
 
 x-postgres-dependency: &postgres-dependency
@@ -24,8 +27,8 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      DB_ENV_PREFIX: ${DB_ENV_PREFIX:-dev}
-      POSTGRES_DB: ${DB_ENV_PREFIX:-dev}-bharat-index
+      APP_ENV: ${APP_ENV:?Set APP_ENV to dev, qa, or prod before starting Compose}
+      POSTGRES_DB: ${APP_ENV:?Set APP_ENV to dev, qa, or prod before starting Compose}-bharat-index
       POSTGRES_USER: ${POSTGRES_USER:-bharatindex}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before starting the services}
     ports:
